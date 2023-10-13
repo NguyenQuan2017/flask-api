@@ -9,6 +9,12 @@ flasgger = "*"
 flask-marshmallow = "*"
 apispec = "*"
 python-dotenv = "*"
+srtranslator = "*"
+django-dump-die = "*"
+requests = "*"
+moviepy = "*"
+gtts = "*"
+pydub = "*"
 
 [dev-packages]
 
