@@ -14,6 +14,8 @@ from pydub import AudioSegment
 import speech_recognition as sr
 from datetime import datetime, timedelta
 import cv2
+from pydub.playback import play
+
 
 home_api = Blueprint('api', __name__)
 
@@ -81,9 +83,9 @@ def upload_file():
 @home_api.route('/create_voice', methods=['POST'])
 def create_voice():
     # Thay thế các giá trị này bằng thông tin tài khoản và ứng dụng của bạn
-    input_srt_file = '/home/quannv/QUAN/flask-api/test_vi_format_translated.srt'
+    input_srt_file = '/home/pc14/QUAN/flask-api/test_vi.srt'
     output_audio_file = 'audio.wav'
-    video_file = '/home/quannv/QUAN/flask-api/test.mp4'
+    video_file = '/home/pc14/QUAN/flask-api/test.mp4'
     output_video_file = '/home/quannv/QUAN/flask-api/test_map.mp4'
     # Phân tích tệp SRT
     with open(input_srt_file, 'r', encoding='utf-8') as srt_file:
@@ -92,25 +94,37 @@ def create_voice():
     # Chuẩn bị video và audio
     video_clip = mp.VideoFileClip(video_file)
     audio = mp.AudioFileClip(video_file)
-    audio = audio.set_duration(video_clip.duration)
-    final_audio = mp.CompositeAudioClip([audio])
+    audio = video_clip.audio
+    audio.write_audiofile("audio.mp3")
+#     audio = audio.set_duration(video_clip.duration)
+#     final_audio = mp.CompositeAudioClip([audio])
     audio_clips = []
-    video_clips = []
+#     video_clips = []
     count = 0
     # Tạo audio cho từng phụ đề và đồng bộ hóa với video
     for i in range(0, len(srt_lines), 4):
+#         if count == 4:
+#             break
         time_line = srt_lines[i + 1].strip()
         if is_valid_time_format(time_line):
             start_time, end_time = time_line.split(' --> ')
             text = srt_lines[i + 2].strip()
             tts = gTTS(text, lang='vi')
             tts.save(f"audio.mp3")
+#             audio = AudioSegment.from_file("audio.mp3")
             audio_clip = mp.AudioFileClip(f"audio.mp3")
+#             audio_clips.append(audio_clip)
+#             mapped_audio = audio.speedup(playback_speed=1.5)
+#             mapped_audio.export("output_mapped_audio.mp3", format="mp3")
+#             audio_clip = mp.AudioFileClip(f"output_mapped_audio.mp3")
 #             audio_clip = audio_clip.set_start(start_time)
+            audio_clips.append(audio_clip)
+#         count += 1
+
 #             audio_clip = audio_clip.set_end(end_time)
 #             audio_clip.write_audiofile(f"audio_{i}.mp3", fps=44100)
-            video_subclip = video_clip.subclip(start_time, end_time)
-            video_subclip.write_videofile("temp_video.mp4")
+#             video_subclip = video_clip.subclip(start_time, end_time)
+#             video_subclip.write_videofile("temp_video.mp4")
 #             text_clip = mp.TextClip(text, fontsize=30, color='white')
             # Mix văn bản với video
 #             result_video = mp.CompositeVideoClip([video_subclip, text_clip.set_position('bottom').set_duration(video_subclip.duration)])
@@ -137,9 +151,9 @@ def create_voice():
 #             segmented_audio.export("segmented_audio.mp3", format="mp3")
             # Hợp nhất âm thanh tổng hợp với video
 #             synthesized_audio = mp.AudioFileClip("segmented_audio.mp3")
-            video_with_synthesized_audio = video_subclip.set_audio(audio_clip)
+#             video_with_synthesized_audio = video_subclip.set_audio(audio_clip)
 #             video_with_synthesized_audio.write_videofile(f"output_video_merge.mp4", codec="libx264")
-            video_clips.append(video_with_synthesized_audio)
+#             video_clips.append(video_with_synthesized_audio)
 #             video_with_synthesized_audio.write_videofile(f"output_video_{i}.mp4", codec="libx264")
 #             video_with_audio = video_subclip.set_audio(audio_clip)
 #             video_with_audio.write_videofile(f"output_video_{i}.mp4", codec="libx264")
@@ -169,14 +183,15 @@ def create_voice():
 #                         audio_clip = audio_clip.set_start(start_time)
 #                         audio_clip = audio_clip.set_end(end_time)
 #                         final_audio = mp.CompositeAudioClip([final_audio, audio_clip])
-    final = mp.concatenate_videoclips(video_clips)
-    final.write_videofile("merged.mp4")
+
+#     final = mp.CompositeAudioClip(audio_clips)
+#     final.write_audiofile("final_audio.mp3", fps=44100)
 
     # Kết hợp (merge) các audio trong danh sách
-#     merged_audio = mp.concatenate_audioclips(audio_clips)
+    merged_audio = mp.concatenate_audioclips(audio_clips)
 #     final_audio = mp.CompositeAudioClip(audio_clips)
     # Lưu âm thanh kết hợp thành tệp mới
-#     merged_audio.write_audiofile("merged_audio.mp3", fps=44100)
+    merged_audio.write_audiofile("merged_audio.mp3", fps=44100)
     # Đồng bộ hóa audio và video
 #     video_clip = video_clip.set_audio(final_audio)
 
@@ -240,3 +255,149 @@ def add_blank_line_to_srt():
                     file.writelines(modified_srt)
 
                 return "Đã thêm dòng trắng vào tệp SRT."
+
+
+@home_api.route('/create_voice_v2', methods=['POST'])
+def create_voice_v2():
+    file_srt = request.files["file_srt"]
+    file_path_srt = os.path.join("uploads", file_srt.filename)
+    file_srt.save(file_path_srt)
+    file_video = request.files["file_video"]
+    file_path_video = os.path.join("uploads", file_video.filename)
+    file_video.save(file_path_video)
+    video_clip = mp.VideoFileClip(file_path_video)
+    # Thay thế các giá trị này bằng thông tin tài khoản và ứng dụng của bạn
+    input_srt_file = file_path_srt
+    output_audio_file = 'output_audio.mp3'
+    video_file = file_path_video
+    # Phân tích tệp SRT
+    with open(input_srt_file, 'r', encoding='utf-8') as srt_file:
+        srt_lines = srt_file.readlines()
+    audio_clips = []
+    count = 0
+    # Tạo audio cho từng phụ đề và đồng bộ hóa với video
+    for i in range(0, len(srt_lines), 4):
+#         if count == 1:
+#             break
+        time_line = srt_lines[i + 1].strip()
+        if is_valid_time_format(time_line):
+            start_time, end_time = time_line.split(' --> ')
+            text = srt_lines[i + 2].strip()
+            url = 'https://api.fpt.ai/hmi/tts/v5'
+            video_subclip = video_clip.subclip(start_time, end_time)
+            video_subclip.write_videofile("temp_video.mp4")
+            video_subclip = mp.VideoFileClip('temp_video.mp4')
+            audio = video_subclip.audio
+            temp_audio_file = "temp_audio.mp3"  # You can change the format if needed
+            audio.write_audiofile(temp_audio_file, fps=44100)
+            exported_audio = AudioSegment.from_file(temp_audio_file)
+
+                # Get the duration of the audio in milliseconds
+            audio_duration = len(exported_audio)
+
+                # Convert milliseconds to seconds
+#             print(f"The speed of the voice in the video is approximately: {audio_duration}")
+            # Convert milliseconds to seconds
+            audio_duration_seconds = audio_duration / 1000
+            print (f"Speed ratio {audio_duration_seconds}")
+            # Get the number of words spoken in the audio (you might need a more accurate method)
+            # For simplicity, assuming an average speech rate of 150 words per minute
+            word_count = audio_duration_seconds  # Adjust this value based on the actual speech rate
+
+            # Calculate the speed (words per second)
+            speed = audio_duration_seconds
+            payload = text
+            headers = {
+                'api-key': 'g3LLsjoYh7NlSM5i5dAcuyHooN8mS5st',
+                'speed': '',
+                'voice': 'banmai'
+            }
+
+            response = requests.request('POST', url, data=payload.encode('utf-8'), headers=headers)
+
+            if response.status_code == 200:
+                response_data = response.json()
+                audio_url = response_data.get('async')
+
+                # Tải tệp âm thanh đã tạo từ URL
+                audio_response = requests.get(audio_url)
+
+                if audio_response.status_code == 200:
+                    with open(output_audio_file, 'wb') as audio_file:
+                        audio_file.write(audio_response.content)
+                        audio_clip = AudioSegment.from_file("output_audio.mp3")
+#                         words = len(text.split())
+#                         duration = len(audio_clip) / 1000
+#
+#                         current_speed = words / duration
+#                         speed_ratio = speed / current_speed
+#                         print (f"Speed ratio {speed} : {current_speed}: {speed_ratio}")
+                        # Apply the speed change to the audio
+                        adjusted_audio = audio_clip._spawn(audio_clip.raw_data, overrides={
+                            "frame_rate": int(audio_clip.frame_rate * 1)
+                        }).set_frame_rate(audio_clip.frame_rate)
+#                         adjusted_audio.write_audiofile("adjusted_audio.mp3", fps=44100)
+                        adjusted_audio.export("adjusted_audio.mp3", format="mp3")
+                        audio_export = mp.AudioFileClip("adjusted_audio.mp3")
+#                         audio_export.set_start(start_time)
+                        audio_clips.append(audio_export)
+#             count +=1
+    # Kết hợp (merge) các audio trong danh sách
+    merged_audio = mp.concatenate_audioclips(audio_clips)
+#     # Lưu âm thanh kết hợp thành tệp mới
+    merged_audio.write_audiofile("merged_audio.mp3", fps=44100)
+    os.remove(file_path_srt)
+    os.remove(file_path_video)
+    os.remove(output_audio_file)
+    return 'success'
+@home_api.route('/add_audio_to_video', methods=['POST'])
+def add_audio_to_video():
+    video_file = request.files["video_file"]
+    file_path_video = os.path.join("uploads", video_file.filename)
+    video_file.save(file_path_video)
+    audio_file = request.files["audio_file"]
+    file_path_audio = os.path.join("uploads", audio_file.filename)
+    audio_file.save(file_path_audio)
+
+    video_clip = mp.VideoFileClip(file_path_video)
+    audio_clip = mp.AudioFileClip(file_path_audio)
+    if video_clip.duration > audio_clip.duration:
+        video_clip = video_clip.subclip(0, audio_clip.duration)
+    # Set the audio duration same as video duration
+#     audio_clip = audio_clip.set_duration(video_clip.duration)
+
+    # Set the audio to the video file
+    video_with_audio = video_clip.set_audio(audio_clip)
+
+    # Specify the output file path for the video with added audio
+    output_path = 'video_with_audio.mp4'
+
+    # Write the final video file
+    video_with_audio.write_videofile(output_path, codec='libx264', audio_codec='aac')
+
+    os.remove(file_path_video)
+    os.remove(file_path_audio)
+
+    return 'success'
+@home_api.route('/get_voice_speed', methods=['POST'])
+def get_voice_speed(video_path):
+#     video_path = '/home/pc14/QUAN/flask-api/test.mp4'
+    video = mp.VideoFileClip(video_path)
+    audio = video.audio
+
+    # Get the duration of the audio in seconds
+    audio_duration = audio.duration
+
+    # Count the number of words in the audio
+    # This method might not be highly accurate but can give an approximate idea
+    # You may need a more sophisticated speech recognition system for better accuracy
+    words = audio.to_soundarray()
+    print(f"The speed of the voice in the video is approximately: {words}")
+    word_count = len(words)
+
+    # Calculate speed (words per second)
+    speed = word_count / audio_duration
+
+    print(f"The speed of the voice in the video is approximately: {speed:.2f} words per second")
+    return 'success'
+
