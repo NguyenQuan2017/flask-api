@@ -17,6 +17,8 @@ gtts = "*"
 pydub = "*"
 speechrecognition = "*"
 opencv-python = "*"
+ffmpeg = "*"
+ffprobe = "*"
 
 [dev-packages]
 
